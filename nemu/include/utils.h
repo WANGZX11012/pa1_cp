@@ -21,6 +21,12 @@
 // ----------- state -----------
 
 enum { NEMU_RUNNING, NEMU_STOP, NEMU_END, NEMU_ABORT, NEMU_QUIT };
+// NEMU_RUNNING：模拟器正在执行指令（运行状态）。
+// NEMU_STOP：执行暂停（初始状态或单步后停止）。
+// NEMU_END：程序正常结束（客户程序完成）。
+// NEMU_ABORT：异常终止（错误或非法操作）。
+// NEMU_QUIT：用户主动退出（输入 "q"）。
+
 
 typedef struct {
   int state;
