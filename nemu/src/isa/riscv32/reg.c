@@ -23,7 +23,17 @@ const char *regs[] = {
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
 
-void isa_reg_display() {
+void isa_reg_display() 
+{
+  printf(ANSI_FMT("[Register status]", ANSI_BG_GREEN) "\n");
+  printf("PC is 0x%08x\n",cpu.pc);
+  printf("Reg  Idx Hex\t\t Dec\n");  // 标题：Reg(4), Idx(4), Hex(12), Dec(>10)
+  for(int i = 0; i < MUXDEF(CONFIG_RVE, 16, 32); i++) 
+  {
+    printf("%-4s %-3d 0x%08x %10d\n", reg_name(i), i, gpr(i), gpr(i));//-4s -左对齐总共4格右边补空格
+  }
+  printf("\n");
+ 
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {

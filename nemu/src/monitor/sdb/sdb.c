@@ -19,43 +19,65 @@
 #include <readline/history.h>
 #include "sdb.h"
 
+#include <memory/vaddr.h>//adding .h我
+
 static int is_batch_mode = false;
 
 void init_regex();      // 初始化正则表达式（用于表达式求值）
 void init_wp_pool();    // 初始化监视点池
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
-static char* rl_gets() {
+static char* rl_gets() 
+{
   static char *line_read = NULL;
 
-  if (line_read) {
+  if (line_read) 
+  {
     free(line_read);
     line_read = NULL;
   }
 
   line_read = readline("(nemu) ");
 
-  if (line_read && *line_read) {
+  if (line_read && *line_read) 
+  {
     add_history(line_read);
   }
 
   return line_read;// 返回输入字符串 类似fget
 }
 
-static int cmd_c(char *args) {
+static int cmd_c(char *args) 
+{
   cpu_exec(-1); // 执行无限步（直到结束）
   return 0;  // 返回 0 表示继续循环  -1才是退出
 }
 
 
 // 命令 'q' 的处理函数：退出 NEMU
-static int cmd_q(char *args) {
+static int cmd_q(char *args) 
+{
   nemu_state.state = NEMU_QUIT;
   return -1;// 返回 -1 表示退出主循环
 }
 
+
+
+
+
+
+
+
+
+
+
+
+//新增命令注册
 static int cmd_help(char *args);// 声明 help 命令处理函数
 static int cmd_si(char *args);
+static int cmd_info(char *args);
+static int cmd_x(char *args);
+static int cmd_p(char *agrs);
 
 // 命令表结构体：存储命令名、描述和处理函数
 static struct {
@@ -67,8 +89,15 @@ static struct {
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
   //si[N]
-  { "si","Let program step through N insts and then pause execution", cmd_si}
+  { "si","Let program step through N insts and then pause execution", cmd_si},
+  //usage si 10 就是单步执行10次
+  { "info","Type r to print all regs",cmd_info},
+  //usage ： info r 就是打印所有寄存器 info w打印监视点还没实现
 
+  { "x","x to examine memory", cmd_x},
+  //usage: x 10 0x8000000打印 内存地址为0x8000_0000附近的10个字节 内存的值
+
+  { "p", "Print expression ", cmd_p}
 
 
 
@@ -119,7 +148,7 @@ static int cmd_si(char *args)
     num = strtol(arg, &endptr, 10); //把arg转成10进制的long型 &endptr用来存储转换停止的地方
     if (*endptr != '\0' || num <= 0) //例如输入 si a *endptr会保存a,if条件为真
     {
-      printf("input is not a valid positive number\n");
+      printf(ANSI_FMT("Input is not a positive number", ANSI_BG_RED) "\n"); //红色背景
       return 0;  // 报错但继续循环
     }
   }
@@ -142,6 +171,94 @@ static int cmd_si(char *args)
 // }
 
 
+static int cmd_info(char *args)
+{
+  char *arg = strtok(NULL, " ");
+  if(arg != NULL && strcmp(arg, "r") == 0) //限制只能输入一个r 命令中间能隔很多个空格
+  {
+    isa_reg_display();
+  }
+  else if(arg != NULL && strcmp(arg, "w") == 0)
+  {
+    printf("print watchpoint\n");
+  }
+  else
+  {
+    printf("Pls enter a valid instruction\n");
+  }
+
+  return 0;
+}
+
+static int cmd_x(char *args)
+{
+  char *offset = strtok(NULL, " ");
+  if(offset == NULL)
+  { 
+    printf("cmd_x Usage: x N Expr\n");
+    return 0;
+  }
+
+  int32_t mem_offset = strtol(offset, NULL , 10);
+
+  char *m_addr = strtok(NULL," ");
+  if(m_addr == NULL)
+  { 
+    printf("cmd_x Usage: x N Expr\n");
+    return 0;
+  }
+  vaddr_t mem_addr = strtol(m_addr, NULL, 16);
+  
+  printf("\nMEMORY EXAMINE\n\n");
+  for(int i = 0; i < mem_offset; i++)
+  {
+    printf("0x%08x : 0x%08x\n", mem_addr, vaddr_read(mem_addr, 4)); //4字节数据
+    mem_addr += 4; 
+  }
+
+  return 0;
+
+}
+
+// void print_tokens(char *e); //打印token的函数
+
+// static int cmd_p(char *args)
+// {
+//   bool success;
+//   word_t result = expr(args, &success);   //word_t is uint32_t
+//   if (success) 
+//   {
+//     printf("Result: %u (0x%x)\n", result, result);
+//     print_tokens(args);
+//   } 
+//   else 
+//   {
+//     printf("Invalid expression\n");
+//   }
+//   return 0;
+// }
+
+static int cmd_p(char *args) 
+{
+  bool success;
+  if (args == NULL || *args == '\0') 
+  {
+    printf("Usage: p <expression>\n");
+    return 0;
+  }
+  word_t result = expr(args, &success);
+  if (success) 
+  {
+    printf("Result: %u (0x%x)\n", result, result);
+  } 
+  else 
+  {
+    printf("Invalid expression\n");
+  }
+  return 0;
+}
+
+
 
 
 
@@ -152,6 +269,12 @@ void sdb_set_batch_mode()
 {
   is_batch_mode = true;
 }
+
+
+
+
+
+
 
 // SDB 主循环：处理用户输入-----------------------------------------------//
 void sdb_mainloop() 
