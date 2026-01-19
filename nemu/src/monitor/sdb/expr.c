@@ -300,7 +300,6 @@ static int get_op_priority(int op) //得到算术运算符的优先级
 
 }
 
-static
 
 
 
