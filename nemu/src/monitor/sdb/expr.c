@@ -300,7 +300,14 @@ static int get_op_priority(int op) //得到算术运算符的优先级
 
 }
 
+static find_main_op(int p, int q)
+{
+  int op = -1;
+  int last_piority = 0;
 
+
+
+}
 
 
 
