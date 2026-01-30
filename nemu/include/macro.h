@@ -83,9 +83,10 @@
 // NOTE2: each element in the container can be a tuple
 #define MAP(c, f) c(f)
 
-#define BITMASK(bits) ((1ull << (bits)) - 1)
-#define BITS(x, hi, lo) (((x) >> (lo)) & BITMASK((hi) - (lo) + 1)) // similar to x[hi:lo] in verilog
-#define SEXT(x, len) ({ struct { int64_t n : len; } __x = { .n = x }; (uint64_t)__x.n; })
+#define BITMASK(bits) ((1ull << (bits)) - 1)       //生成“低 bits 位全为 1”的掩码 
+#define BITS(x, hi, lo) (((x) >> (lo)) & BITMASK((hi) - (lo) + 1)) // similar to x[hi:lo] in verilog 取lo到hi位
+#define SEXT(x, len) ({ struct { int64_t n : len; } __x = { .n = x }; (uint64_t)__x.n; }) //建一个只有 len 位的有符号字段 n，把 x 放进去。”
+//这样 x 会被截断到 len 位，并按有符号数保存，后面读 __x.n 时就自动符号扩展。
 
 #define ROUNDUP(a, sz)   ((((uintptr_t)a) + (sz) - 1) & ~((sz) - 1))
 #define ROUNDDOWN(a, sz) ((((uintptr_t)a)) & ~((sz) - 1))

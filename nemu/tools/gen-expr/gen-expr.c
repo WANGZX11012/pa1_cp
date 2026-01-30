@@ -31,8 +31,96 @@ static char *code_format =
 "  return 0; "
 "}";
 
-static void gen_rand_expr() {
-  buf[0] = '\0';
+static uint32_t choose(uint32_t n)
+{
+  return rand() % n + 0;//生成0~n-1的随机数 
+}
+
+static void gen_num()//随机整数的生成
+{
+  char num_str[10];
+  if(!(sprintf(num_str, "%d",(rand() % 100 + 1))))
+    {
+      printf("error gen num");
+      return;
+    }
+  else
+  strcat(buf, num_str);
+}
+
+static void gen_hex_num()//生成随机4位十六进制数，格式 0x1111
+{
+  uint32_t num = rand() % 65536; // 0 到 65535
+  char hex_str[10];
+  sprintf(hex_str, "0x%04X", num);
+  strcat(buf, hex_str);
+}
+
+
+
+static void gen_char(char c)
+{
+  char my_c[2] = {c, '\0'}; //一定要\0结尾 不能定义后赋值
+  strcat(buf, my_c);
+}
+
+static void gen_rand_op()
+{
+  char *ops[] = {"+", "-", "*", "/", "<=", "==", "!=", "||", "&&"};
+  strcat(buf, ops[choose(9)]);
+}
+
+static void gen_unary_ops()
+{
+  char my_unary[2] = {'+', '-'};
+  gen_char(my_unary[choose(2)]);
+}
+
+
+static void gen_rand_expr(); 
+static void gen_term() 
+{
+  if (strlen(buf) > 50) 
+  {
+    gen_num();
+    return;
+  }
+
+  switch (choose(3)) 
+  {
+  case 0:
+    gen_num();
+    break;
+  case 1:
+    gen_hex_num();
+    break;
+
+  default:
+    gen_char('('); gen_rand_expr(); gen_char(')');
+    break;
+  }
+}
+
+static void gen_rand_expr() 
+{
+  if (strlen(buf) > 50) 
+  {
+    gen_term();
+    return;
+  }
+
+  switch (choose(3)) 
+  {
+  case 0:
+    gen_term();
+    break;
+  case 1:
+    gen_unary_ops(); gen_char(' '); gen_term();  // 一元 + 空格 + term
+    break;
+  default:
+    gen_term(); gen_char(' '); gen_rand_op(); gen_char(' '); gen_term();  // term + 空格 + op + 空格 + term
+    break;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -42,9 +130,17 @@ int main(int argc, char *argv[]) {
   if (argc > 1) {
     sscanf(argv[1], "%d", &loop);
   }
+ 
   int i;
   for (i = 0; i < loop; i ++) {
+    
+    buf[0] = '\0';//循环生成表达式前清空缓冲区
     gen_rand_expr();
+    if(strlen(buf) >= 50000) //超出界限
+    {
+      printf("buffer overflow\n");
+      exit(1);
+    }
 
     sprintf(code_buf, code_format, buf);
 

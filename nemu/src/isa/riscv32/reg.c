@@ -26,7 +26,7 @@ const char *regs[] = {
 void isa_reg_display() 
 {
   printf(ANSI_FMT("[Register status]", ANSI_BG_GREEN) "\n");
-  printf("PC is 0x%08x\n",cpu.pc);
+  printf("PC is 0x%08x\n",cpu.pc);  //pc寄存器！！
   printf("Reg  Idx Hex\t\t Dec\n");  // 标题：Reg(4), Idx(4), Hex(12), Dec(>10)
   for(int i = 0; i < MUXDEF(CONFIG_RVE, 16, 32); i++) 
   {
@@ -36,6 +36,28 @@ void isa_reg_display()
  
 }
 
-word_t isa_reg_str2val(const char *s, bool *success) {
-  return 0;
+word_t isa_reg_str2val(const char *s, bool *success) 
+{
+  for (int i = 0; i < MUXDEF(CONFIG_RVE, 16, 32); i++) //遍历查找
+  {
+    if (strcmp(reg_name(i), s) == 0)   //如果直接==比较 比较的只是指针地址
+    {
+      if (success) *success = true;
+      return gpr(i);
+    }
+  
+  }
+
+  if(strcmp("pc", s) == 0) //pc寄存器单独判断
+  {
+    if(success) *success = true;
+    return cpu.pc;
+  }
+
+
+  if (success) *success = false; //默认是true 只有赋值false时才是出错
+  {
+    printf("CANT FIND REG\n");
+    return 0;
+  }
 }
