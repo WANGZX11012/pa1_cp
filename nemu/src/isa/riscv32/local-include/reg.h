@@ -24,6 +24,7 @@
 // 返回：有效的索引值
 // 功能：如果启用了运行时检查(CONFIG_RT_CHECK)，断言索引在有效范围内（0 到 31 或 15，取决于 CONFIG_RVE）
 static inline int check_reg_idx(int idx) {
+  IFDEF(CONFIG_RT_CHECK, if (!(idx >= 0 && idx < MUXDEF(CONFIG_RVE, 16, 32))) { fprintf(stderr, "check_reg_idx fail: idx=%d caller=%p\n", idx, __builtin_return_address(0)); })
   IFDEF(CONFIG_RT_CHECK, assert(idx >= 0 && idx < MUXDEF(CONFIG_RVE, 16, 32)));
   return idx;
 }

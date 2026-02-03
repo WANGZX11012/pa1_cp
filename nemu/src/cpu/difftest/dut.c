@@ -26,7 +26,7 @@ void (*ref_difftest_regcpy)(void *dut, bool direction) = NULL;
 void (*ref_difftest_exec)(uint64_t n) = NULL;
 void (*ref_difftest_raise_intr)(uint64_t NO) = NULL;
 
-#ifdef CONFIG_DIFFTEST
+#ifdef CONFIG_DIFFTEST //menuconfig 设置
 
 static bool is_skip_ref = false;
 static int skip_dut_nr_inst = 0;
@@ -99,14 +99,17 @@ static void checkregs(CPU_state *ref, vaddr_t pc) {
   }
 }
 
+//主对比函数
 void difftest_step(vaddr_t pc, vaddr_t npc) {
   CPU_state ref_r;
-
+  // 情况 A：DUT 需要追赶 REF（skip_dut_nr_inst > 0）
+  // 例如 REF 一次执行了多条指令（instruction packing），我们让 DUT 跳过若干次检查，
+  // 直到 DUT 的 pc 追上 REF（ref_r.pc == npc），再恢复比较。
   if (skip_dut_nr_inst > 0) {
-    ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
-    if (ref_r.pc == npc) {
+    ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);// 从 REF 读寄存器到 ref_r
+    if (ref_r.pc == npc) {  //pc相等时才进行check regs
       skip_dut_nr_inst = 0;
-      checkregs(&ref_r, npc);
+      checkregs(&ref_r, npc); // 比较并可能触发 abort
       return;
     }
     skip_dut_nr_inst --;
@@ -115,17 +118,20 @@ void difftest_step(vaddr_t pc, vaddr_t npc) {
     return;
   }
 
+  // 情况 B：令 REF 跳过当前 DUT 指令（is_skip_ref 为 true）
+  // 有些指令在 REF 上无法逐条对应，直接把 DUT 状态写回 REF，跳过比较。
   if (is_skip_ref) {
     // to skip the checking of an instruction, just copy the reg state to reference design
-    ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
+    ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);// 把 DUT 的 cpu 状态写入 REF
     is_skip_ref = false;
     return;
   }
 
-  ref_difftest_exec(1);
-  ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
+  // 正常路径：让 REF 执行一条指令，然后读出 REF 寄存器并比较
+  ref_difftest_exec(1);                             // REF 执行 1 条指令
+  ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);     // 将 REF 状态读到 ref_r
 
-  checkregs(&ref_r, pc);
+  checkregs(&ref_r, pc);                            // 交给 isa_difftest_checkregs 比较
 }
 #else
 void init_difftest(char *ref_so_file, long img_size, int port) { }
