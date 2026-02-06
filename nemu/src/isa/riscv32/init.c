@@ -22,8 +22,8 @@
 //客户程序？
 static const uint32_t img [] = {
   0x00000297,  // auipc t0,0
-  0x00028823,  // sb  zero,16(t0)
-  0x0102c503,  // lbu a0,16(t0)
+  0x00028823,  // sb  zero,16(t0)     //把0x8000_0010高位字节写为0了 小端序
+  0x0102c503,  // lbu a0,16(t0)       //读到字节为0 写入a0寄存器
   0x00100073,  // ebreak (used as nemu_trap)
   0xdeadbeef,  // some data
 };

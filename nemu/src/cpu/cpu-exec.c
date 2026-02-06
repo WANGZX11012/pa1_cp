@@ -17,6 +17,7 @@
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
 #include <locale.h>
+#include "../src/monitor/sdb/watchpoint.h"
 
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
@@ -26,24 +27,39 @@
 #define MAX_INST_TO_PRINT 10
 
 CPU_state cpu = {};
-uint64_t g_nr_guest_inst = 0;
-static uint64_t g_timer = 0; // unit: us
-static bool g_print_step = false;
+uint64_t g_nr_guest_inst = 0;     // 已执行的客户指令计数
+static uint64_t g_timer = 0;      // unit: us 耗时
+static bool g_print_step = false; // 是否打印每条指令的trace
+
+//#ifdef CONFIG_WATCHPOINT
+int update_wp(void);  // 前置声明
+//#endif
+
 
 void device_update();
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
-  if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
+  if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }// 写入trace日志
 #endif
-  if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
-  IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
+  if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); } // 需要时打印
+  IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc)); // 与参考模型比对
+
+  #ifdef CONFIG_WATCHPOINT
+  // 仅在定义了 CONFIG_WATCHPOINT 时进行监视点检查  这个检查是在指令执行后，所以指令执行后写的状态nemu.stop或nemu.end会被覆盖
+  if ( nemu_state.state == NEMU_RUNNING && update_wp() > 0) 
+  {    
+    nemu_state.state = NEMU_STOP;  // 有触发则暂停!!
+  }
+  #endif
+
+
 }
 
-static void exec_once(Decode *s, vaddr_t pc) {
+static void exec_once(Decode *s, vaddr_t pc) {  //s是译码后的指令
   s->pc = pc;
-  s->snpc = pc;
-  isa_exec_once(s);
+  s->snpc = pc;     // 默认顺序下一条pc
+  isa_exec_once(s); // ISA层执行一条指令
   cpu.pc = s->dnpc;
 #ifdef CONFIG_ITRACE
   char *p = s->logbuf;
@@ -71,12 +87,14 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #endif
 }
 
-static void execute(uint64_t n) {
+static void execute(uint64_t n) 
+{
   Decode s;
-  for (;n > 0; n --) {
+  for (;n > 0; n --) 
+  {
     exec_once(&s, cpu.pc);
-    g_nr_guest_inst ++;
-    trace_and_difftest(&s, cpu.pc);
+    g_nr_guest_inst ++;              // 计数
+    trace_and_difftest(&s, cpu.pc); //执行指令后 进行difftest
     if (nemu_state.state != NEMU_RUNNING) break;
     IFDEF(CONFIG_DEVICE, device_update());
   }
@@ -97,11 +115,13 @@ void assert_fail_msg() {
 }
 
 /* Simulate how the CPU works. */
-void cpu_exec(uint64_t n) {
+void cpu_exec(uint64_t n) 
+{
   g_print_step = (n < MAX_INST_TO_PRINT);
   //是否打印每条指令的详细信息（MAX_INST_TO_PRINT 默认 10）。如果 n 小（如单步），启用打印，便于调试。
-  switch (nemu_state.state) {
-    case NEMU_END: case NEMU_ABORT: case NEMU_QUIT:
+  switch (nemu_state.state) 
+  {
+    case NEMU_END: case NEMU_ABORT: case NEMU_QUIT: //三种情况 同一个输出 end abort quit的状态就返回
       printf("Program execution has ended. To restart the program, exit NEMU and run again.\n");
       return;
     default: nemu_state.state = NEMU_RUNNING;
@@ -114,8 +134,9 @@ void cpu_exec(uint64_t n) {
   uint64_t timer_end = get_time();
   g_timer += timer_end - timer_start;
 
-  switch (nemu_state.state) {
-    case NEMU_RUNNING: nemu_state.state = NEMU_STOP; break;
+  switch (nemu_state.state) 
+  {
+    case NEMU_RUNNING: nemu_state.state = NEMU_STOP; break; //避免无限循环执行
 
     case NEMU_END: case NEMU_ABORT:
       Log("nemu: %s at pc = " FMT_WORD,

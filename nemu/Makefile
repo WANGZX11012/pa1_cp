@@ -62,3 +62,25 @@ else
 # Include rules to build NEMU
 include $(NEMU_HOME)/scripts/native.mk
 endif
+
+.PHONY: count_c count_h #避免重名
+
+# 统计 nemu 源码行数
+# 不含空行
+count_c:
+	@echo "[Current] .c total lines (excluding blanks) under ./nemu:"
+	@find -L . -type f \( -name '*.c'  \) -print0 | xargs -0 cat | grep -v -E '^[[:space:]]*$$' | wc -l
+
+count_h:
+	@echo "[Current] .h total lines (excluding blanks) under ./nemu:"
+	@find -L . -type f \( -name '*.h'  \) -print0 | xargs -0 cat | grep -v -E '^[[:space:]]*$$' | wc -l
+
+
+#管道 |: 把左边命令的“输出”作为右边命令的“输入”。像搭积木一样把多个命令串起来做一件事。
+#grep: 读取输入的每一行，按“模式”（正则表达式）筛选行。默认只输出匹配的行；加 -v 变成“不匹配的行”。
+#正则关键符号:
+#^ 开头；$ 结尾。
+#[[:space:]] 空白字符（空格、制表符等）。
+#* 前面的东西重复零次或多次。
+#所以 ^[[:space:]]*$ 表示“整行都是空白（或空行）”。
+

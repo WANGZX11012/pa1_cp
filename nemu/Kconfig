@@ -126,6 +126,11 @@ endmenu
 
 menu "Testing and Debugging"
 
+config WATCHPOINT
+  bool "Enable watchpoint"
+  default n
+
+
 
 config TRACE
   bool "Enable tracer"
@@ -197,6 +202,12 @@ if MODE_SYSTEM
 source "src/memory/Kconfig"
 source "src/device/Kconfig"
 endif
+
+
+
+
+
+
 
 
 menu "Miscellaneous"
